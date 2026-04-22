@@ -5,7 +5,7 @@ export interface User {
   id: string;
   email: string;
   isPro: boolean;
-  tokens: number;
+  credits: number;
   profilePicture?: string;
   tokenHistory?: {
     id: string;

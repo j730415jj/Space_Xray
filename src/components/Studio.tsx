@@ -12,12 +12,12 @@ import { DesignResult } from '../types';
 
 interface StudioProps {
   onGenerate: (result: DesignResult) => void;
-  tokens: number;
+  credits: number;
   isPro: boolean;
   userId: string;
 }
 
-export function Studio({ onGenerate, tokens, isPro, userId }: StudioProps) {
+export function Studio({ onGenerate, credits, isPro, userId }: StudioProps) {
   const { language } = useLanguage();
   const t = translations[language].studio;
   const [selectedStyle, setSelectedStyle] = useState<DesignStyle>(STYLES[0]);
@@ -26,6 +26,10 @@ export function Studio({ onGenerate, tokens, isPro, userId }: StudioProps) {
   const [capturedBase64, setCapturedBase64] = useState<string | null>(null);
   const [capturedMime, setCapturedMime] = useState<string>('image/jpeg');
   const [error, setError] = useState<string | null>(null);
+  const [guestCredits, setGuestCredits] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem('guest_credits') || '1');
+    return isNaN(v) ? 1 : v;
+  });
   const [customColors, setCustomColors] = useState<string[]>([]);
   const [hexInput, setHexInput] = useState('');
   const [params, setParams] = useState({
@@ -132,6 +136,12 @@ export function Studio({ onGenerate, tokens, isPro, userId }: StudioProps) {
         analysis: data.analysis,
       };
       onGenerate(result);
+      // 비회원일 경우 로컬에 저장된 1회권 차감
+      if (!userId) {
+        const next = Math.max(0, guestCredits - 1);
+        setGuestCredits(next);
+        localStorage.setItem('guest_credits', String(next));
+      }
     } catch {
       setError('서버 연결에 실패했습니다. 서버가 실행 중인지 확인하세요.');
     } finally {
@@ -148,6 +158,8 @@ export function Studio({ onGenerate, tokens, isPro, userId }: StudioProps) {
     localStorage.setItem('ais_studio_state', JSON.stringify(state));
     alert(language === 'ko' ? '디자인 설정이 저장되었습니다.' : 'Design settings saved.');
   };
+
+  const remaining = userId ? credits : guestCredits;
 
   return (
     <div className="w-full h-full max-w-6xl mx-auto px-4 md:px-6 py-4 md:py-6 pb-20 md:pb-8 flex flex-col gap-5 md:gap-10 overflow-y-auto scrollbar-hide">
@@ -365,7 +377,7 @@ export function Studio({ onGenerate, tokens, isPro, userId }: StudioProps) {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleGenerate}
-                  disabled={isGenerating || !capturedBase64}
+                  disabled={isGenerating || !capturedBase64 || remaining <= 0}
                   className={cn(
                     "w-full py-3.5 md:py-5 rounded-xl md:rounded-2xl font-headline font-black text-base md:text-lg flex flex-col items-center justify-center gap-0.5 transition-all group overflow-hidden",
                     isGenerating || !capturedBase64
@@ -387,7 +399,9 @@ export function Studio({ onGenerate, tokens, isPro, userId }: StudioProps) {
                         {capturedBase64 ? t.generate : (language === 'ko' ? '사진을 먼저 찍어주세요' : 'Take a photo first')}
                         {capturedBase64 && <ArrowRight className="w-5 h-5 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />}
                       </div>
-                      {capturedBase64 && <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">-50 {t.tokens}</span>}
+                      {capturedBase64 && (
+                        <span className="text-[12px] font-bold uppercase tracking-[0.2em] opacity-90 mt-1">{language === 'ko' ? `남은 분석권: ${remaining}개` : `Remaining credits: ${remaining}`}</span>
+                      )}
                     </>
                   )}
                 </button>

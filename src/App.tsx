@@ -10,6 +10,7 @@ import { Landing } from './components/Landing';
 import { AuthPages } from './components/AuthPages';
 import { Page, User, DesignResult } from './types';
 import { cn } from './lib/utils';
+import { supabase } from './lib/supabaseClient';
 import { User as UserIcon, LayoutGrid, History, Settings, LogOut, ArrowRight, Sparkles, Camera, Zap } from 'lucide-react';
 import { useLanguage } from './contexts/LanguageContext';
 import { translations } from './translations';
@@ -28,22 +29,52 @@ export default function App() {
     }
   }, []);
 
-  const handleLogin = () => {
-    const mockUser: User = {
-      id: '1',
-      email: 'j730415@gmail.com',
-      isPro: false,
-      tokens: 1250,
-      tokenHistory: [
-        { id: 'th1', date: '2026-04-10', amount: 500, cost: 4.50 },
-        { id: 'th2', date: '2026-04-15', amount: 500, cost: 4.50 },
-        { id: 'th3', date: '2026-04-20', amount: 250, cost: 2.50 },
-      ]
-    };
-    setUser(mockUser);
-    setCurrentPage('studio');
-    // Once they log in, they have definitely seen the app
-    localStorage.setItem('vision_interior_visited', 'true');
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.warn('Login error', error.message || error);
+        return;
+      }
+      const userId = data.user?.id;
+      if (!userId) {
+        // 로그인은 되었지만 user id를 받지 못한 경우
+        console.warn('No user id returned from Supabase auth');
+        return;
+      }
+
+      // 사용자 credits 조회 (있으면 사용, 없으면 비회원 기본값 부여)
+      const { data: row, error: rowErr } = await supabase.from('users').select('credits,is_pro,email').eq('id', userId).maybeSingle();
+      if (rowErr) console.warn('Failed to fetch user row', rowErr.message || rowErr);
+
+      let credits = 1;
+      let isPro = false;
+      if (row && typeof row.credits === 'number') {
+        credits = row.credits;
+        isPro = !!row.is_pro;
+      } else {
+        // 서버의 안전한 업서트를 통해 기본 1크레딧을 생성
+        await fetch('/api/add_credits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, amount: 1 }),
+        });
+        credits = 1;
+      }
+
+      const newUser: User = {
+        id: userId,
+        email,
+        isPro,
+        credits,
+        tokenHistory: [],
+      };
+      setUser(newUser);
+      setCurrentPage('studio');
+      localStorage.setItem('vision_interior_visited', 'true');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleGetStarted = () => {
@@ -56,11 +87,11 @@ export default function App() {
   };
 
   const handleGenerate = (result: DesignResult) => {
-    if (!user || user.tokens < 50) {
+    if (!user || user.credits < 1) {
       setCurrentPage('shop');
       return;
     }
-    setUser(prev => prev ? { ...prev, tokens: prev.tokens - 50 } : null);
+    setUser(prev => prev ? { ...prev, credits: prev.credits - 1 } : null);
     setLatestResult(result);
     setCurrentPage('results');
   };
@@ -77,10 +108,9 @@ export default function App() {
       amount,
       cost
     };
-    
-    setUser(prev => prev ? { 
-      ...prev, 
-      tokens: prev.tokens + amount,
+    setUser(prev => prev ? {
+      ...prev,
+      credits: prev.credits + amount,
       tokenHistory: [newHistoryItem, ...(prev.tokenHistory || [])]
     } : null);
   };
@@ -102,7 +132,7 @@ export default function App() {
       <Navbar 
         currentPage={currentPage} 
         setCurrentPage={setCurrentPage} 
-        tokens={user?.tokens || 0} 
+        credits={user?.credits || 0} 
         user={user || undefined}
       />
 
@@ -119,7 +149,7 @@ export default function App() {
             {currentPage === 'studio' && (
               <Studio
                 onGenerate={handleGenerate}
-                tokens={user?.tokens || 0}
+                credits={user?.credits || 0}
                 isPro={user?.isPro ?? false}
                 userId={user?.id ?? ''}
               />
@@ -151,7 +181,8 @@ export default function App() {
                 <Pricing 
                   onUpgrade={handleUpgrade} 
                   onBuyTokens={handleBuyTokens} 
-                  onNavigate={setCurrentPage} 
+                  onNavigate={setCurrentPage}
+                  userId={user?.id}
                 />
               </div>
             )}
@@ -195,11 +226,11 @@ function ProfilePage({ user, onLogout, onNavigate, onUpdateUser }: { user: User;
       pro: "프로 플랜",
       basic: "베이직 플랜",
       summary: "계정 요약",
-      tokens: "보유 토큰",
+      tokens: "보유 분석권",
       projects: "프로젝트",
       collection: "마이 컬렉션",
       history: "생성 히스토리",
-      tokenHistory: "토큰 충전 내역",
+      tokenHistory: "분석권 충전 내역",
       settings: "계정 설정",
       logout: "로그아웃",
       benefits: "멤버십 혜택",
@@ -215,11 +246,11 @@ function ProfilePage({ user, onLogout, onNavigate, onUpdateUser }: { user: User;
       pro: "PRO PLAN",
       basic: "BASIC PLAN",
       summary: "Account Summary",
-      tokens: "Tokens",
+      tokens: "Credits",
       projects: "Projects",
       collection: "My Collection",
       history: "History",
-      tokenHistory: "Token History",
+      tokenHistory: "Credit History",
       settings: "Settings",
       logout: "Sign Out",
       benefits: "Membership Benefits",
@@ -235,11 +266,11 @@ function ProfilePage({ user, onLogout, onNavigate, onUpdateUser }: { user: User;
       pro: "プロプラン",
       basic: "ベーシックプラン",
       summary: "アカウント概要",
-      tokens: "保有トークン",
+      tokens: "保有分析権",
       projects: "プロジェクト",
       collection: "マイコレクション",
       history: "生成ヒストリー",
-      tokenHistory: "トークン履歴",
+      tokenHistory: "分析権履歴",
       settings: "設定",
       logout: "ログアウト",
       benefits: "メンバーシップ特典",
@@ -357,13 +388,13 @@ function ProfilePage({ user, onLogout, onNavigate, onUpdateUser }: { user: User;
               {(user.tokenHistory || []).map(item => (
                 <div key={item.id} className="bg-surface-muted p-6 rounded-2xl border border-border flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                      <Zap className="w-6 h-6 fill-primary" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-base">{item.amount.toLocaleString()} Tokens</p>
-                      <p className="text-xs text-text-muted mt-0.5">{item.date}</p>
-                    </div>
+                        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                          <Zap className="w-6 h-6 fill-primary" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-base">{item.amount.toLocaleString()} Credits</p>
+                          <p className="text-xs text-text-muted mt-0.5">{item.date}</p>
+                        </div>
                   </div>
                   <div className="text-right">
                     <p className="font-headline font-black text-lg">${item.cost.toFixed(2)}</p>
@@ -412,7 +443,7 @@ function ProfilePage({ user, onLogout, onNavigate, onUpdateUser }: { user: User;
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-surface-muted p-6 rounded-2xl border border-border">
                   <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">{labels.tokens}</p>
-                  <p className="text-2xl font-headline font-black text-primary">{user.tokens.toLocaleString()}</p>
+                  <p className="text-2xl font-headline font-black text-primary">{user.credits.toLocaleString()}</p>
                 </div>
                 <div className="bg-surface-muted p-6 rounded-2xl border border-border">
                   <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">{labels.projects}</p>

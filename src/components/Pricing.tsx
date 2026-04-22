@@ -11,9 +11,10 @@ interface PricingProps {
   onUpgrade: (plan: 'pro') => void;
   onBuyTokens: (amount: number) => void;
   onNavigate?: (page: any) => void;
+  userId?: string;
 }
 
-export function Pricing({ onUpgrade, onBuyTokens, onNavigate }: PricingProps) {
+export function Pricing({ onUpgrade, onBuyTokens, onNavigate, userId }: PricingProps) {
   const { language } = useLanguage();
   const t = translations[language].pricing;
   
@@ -22,14 +23,14 @@ export function Pricing({ onUpgrade, onBuyTokens, onNavigate }: PricingProps) {
   const [purchaseItem, setPurchaseItem] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [pendingPurchase, setPendingPurchase] = React.useState<{
-    type: 'pro' | 'tokens';
+        type: 'pro' | 'credits';
     value: any;
     itemName: string;
     price: string;
   } | null>(null);
   
   const handlePurchase = (type: 'pro' | 'tokens', value: any, itemName: string, _planId: string, price: string) => {
-    setPendingPurchase({ type, value, itemName, price });
+        setPendingPurchase({ type: type === 'tokens' ? 'credits' : type, value, itemName, price });
   };
 
   const executePurchase = () => {
@@ -45,8 +46,18 @@ export function Pricing({ onUpgrade, onBuyTokens, onNavigate }: PricingProps) {
       setIsProcessing(false);
       setShowSuccess(true);
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-      if (type === 'pro') onUpgrade('pro');
-      else onBuyTokens(value);
+          if (type === 'pro') {
+        // Call backend to add 30 credits for Pro subscription
+        if (userId) {
+          fetch('/api/add_credits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, amount: 30 }),
+          }).catch(() => { /* ignore */ });
+        }
+        onUpgrade('pro');
+           onBuyTokens(30);
+      } else onBuyTokens(value);
       setTimeout(() => setShowSuccess(false), 3000);
     }, 1200);
   };
@@ -257,13 +268,13 @@ export function Pricing({ onUpgrade, onBuyTokens, onNavigate }: PricingProps) {
           description={language === 'ko' ? "Claude AI 고품질 분석과 클라우드 저장소 제공" : "Claude AI premium analysis with cloud storage"}
           features={language === 'ko' ? [
             "Claude 3.5 Sonnet AI 고품질 분석",
-            "월 50회 분석 제공",
+            "매달 30회 분석 제공",
             "500MB 클라우드 이미지 저장",
             "WebP 자동 압축 처리",
             "분석 히스토리 영구 보관",
           ] : [
             "Claude 3.5 Sonnet premium analysis",
-            "50 analyses per month",
+            "30 analyses per month",
             "500MB cloud image storage",
             "Auto WebP compression",
             "Permanent history archive",
@@ -274,7 +285,7 @@ export function Pricing({ onUpgrade, onBuyTokens, onNavigate }: PricingProps) {
         />
       </section>
 
-      {/* Tokens Boutique */}
+      {/* Credits Boutique */}
       <section className="mb-24">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 border-b border-border pb-8">
           <div>
@@ -282,39 +293,50 @@ export function Pricing({ onUpgrade, onBuyTokens, onNavigate }: PricingProps) {
             <p className="text-text-muted max-w-lg">{language === 'ko' ? '일시적인 프로젝트 확장이 필요하신가요? 필요한 만큼만 충전하여 프리미엄 렌더링을 즉시 이용하세요.' : 'Need a temporary boost? Recharge as needed and use premium rendering immediately.'}</p>
           </div>
           <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Info className="w-4 h-4" />
-            {language === 'ko' ? '토큰은 구매 후 1년간 유효합니다' : 'Tokens are valid for 1 year after purchase'}
-          </div>
+              <Info className="w-4 h-4" />
+              {language === 'ko' ? '분석권은 구매 후 1년간 유효합니다' : 'Credits are valid for 1 year after purchase'}
+            </div>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
           <TokenCard
             badge={language === 'ko' ? '베이직 팩' : 'Basic Pack'}
-            amount={language === 'ko' ? '100 토큰' : '100 Tokens'}
+            amount={language === 'ko' ? '100 분석권' : '100 Credits'}
             price="₩4,900"
             description={language === 'ko' ? '간단한 공간 분석과 스타일 탐색을 위한 입문 팩' : 'Starter pack for quick space analysis'}
             icon={<Zap className="w-6 h-6" />}
-            onClick={() => handlePurchase('tokens', 100, language === 'ko' ? '베이직 팩 100토큰' : 'Basic Pack 100 Tokens', 'token-basic', '₩4,900')}
+            onClick={() => handlePurchase('tokens', 100, language === 'ko' ? '베이직 팩 100분석권' : 'Basic Pack 100 Credits', 'token-basic', '₩4,900')}
           />
           <TokenCard
             badge={language === 'ko' ? '스마트 팩' : 'Smart Pack'}
-            amount={language === 'ko' ? '500 토큰' : '500 Tokens'}
+            amount={language === 'ko' ? '500 분석권' : '500 Credits'}
             price="₩19,000"
             description={language === 'ko' ? '집 전체 공간을 분석하기에 딱 맞는 베스트 팩' : 'Best value for full-home analysis'}
             icon={<Zap className="w-6 h-6" />}
             discount={language === 'ko' ? '22% 할인' : '22% OFF'}
             highlight
-            onClick={() => handlePurchase('tokens', 500, language === 'ko' ? '스마트 팩 500토큰' : 'Smart Pack 500 Tokens', 'token-smart', '₩19,000')}
+            onClick={() => handlePurchase('tokens', 500, language === 'ko' ? '스마트 팩 500분석권' : 'Smart Pack 500 Credits', 'token-smart', '₩19,000')}
           />
           <TokenCard
             badge={language === 'ko' ? '프로 팩' : 'Pro Pack'}
-            amount={language === 'ko' ? '1,500 토큰' : '1,500 Tokens'}
+            amount={language === 'ko' ? '1,500 분석권' : '1,500 Credits'}
             price="₩49,000"
             description={language === 'ko' ? '대규모 프로젝트와 복수 시나리오 분석을 위한 팩' : 'Large projects and multi-scenario analysis'}
             icon={<Zap className="w-6 h-6" />}
             discount={language === 'ko' ? '최대 33% 절약' : 'Save 33%'}
-            onClick={() => handlePurchase('tokens', 1500, language === 'ko' ? '프로 팩 1,500토큰' : 'Pro Pack 1,500 Tokens', 'token-pro', '₩49,000')}
+            onClick={() => handlePurchase('tokens', 1500, language === 'ko' ? '프로 팩 1,500분석권' : 'Pro Pack 1,500 Credits', 'token-pro', '₩49,000')}
           />
+        </div>
+        <div className="mt-8 flex items-center gap-4">
+          <div className="flex-1 bg-surface-muted p-4 rounded-2xl border border-border flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold">{language === 'ko' ? '단건 구매' : 'Single Purchase'}</p>
+              <p className="text-text-muted text-xs">{language === 'ko' ? '1회 분석권' : '1 analysis credit'}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => handlePurchase('tokens', 1, language === 'ko' ? '단건 1회권' : 'Single 1-credit', 'single-1', '₩990')} className="py-2 px-4 rounded-xl bg-primary text-white font-bold">₩990</button>
+            </div>
+          </div>
         </div>
       </section>
 

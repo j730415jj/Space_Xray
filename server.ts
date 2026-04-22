@@ -27,6 +27,11 @@ const supabase = supabaseUrl && process.env.SUPABASE_ANON_KEY
   ? createClient(supabaseUrl, process.env.SUPABASE_ANON_KEY)
   : null;
 
+// Admin client (서비스 역할 키) - 서버에서 크레딧·관리 작업을 수행할 때 사용
+const supabaseAdmin = supabaseUrl && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : null;
+
 // 스타일별 결과 이미지 (Gemini/Claude는 텍스트 분석만, 이미지는 스타일 매핑)
 const STYLE_RESULT_IMAGES: Record<string, string> = {
   minimalist:  "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&q=80&w=1200",
@@ -76,6 +81,7 @@ async function startServer() {
       gemini: !!gemini,
       claude: !!claude,
       supabase: !!supabase,
+      supabaseAdmin: !!supabaseAdmin,
     });
   });
 
@@ -91,6 +97,40 @@ async function startServer() {
     let analysisText = "";
 
     try {
+      // ── 크레딧 차감 로직: Supabase의 users 테이블의 `credits` 컬럼을 직접 차감
+      if ((supabaseAdmin || supabase) && userId) {
+        try {
+          const client = supabaseAdmin || supabase;
+          const { data: userRow, error: userErr } = await client
+            .from("users")
+            .select("credits,is_pro")
+            .eq("id", userId)
+            .maybeSingle();
+
+          if (userErr) {
+            console.warn("Supabase user lookup failed:", userErr.message || userErr);
+          }
+
+          const currentCredits = (userRow && typeof userRow.credits === 'number') ? userRow.credits : null;
+
+          // If we have a known credit count, enforce and decrement by 1
+          if (currentCredits !== null) {
+            if (currentCredits <= 0) {
+              return res.status(402).json({ error: "잔여 분석권이 없습니다. 상점에서 충전해 주세요." });
+            }
+
+            // decrement
+            const client2 = supabaseAdmin || supabase;
+            const { error: updErr } = await client2
+              .from("users")
+              .update({ credits: currentCredits - 1 })
+              .eq("id", userId);
+            if (updErr) console.warn("Supabase credit decrement failed:", updErr.message || updErr);
+          }
+        } catch (e) {
+          console.warn("Credit handling error:", e);
+        }
+      }
       if (isPro && claude) {
         // ── Pro 유저: Claude 3.5 Sonnet (고품질) ──
         const response = await claude.messages.create({
@@ -191,6 +231,59 @@ async function startServer() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "알 수 없는 오류";
       res.status(500).json({ error: message });
+    }
+  });
+
+  // ─── 회원가입 완료 시 크레딧 부여 (프론트에서 회원가입 완료 후 호출)
+  app.post('/api/signup_complete', async (req, res) => {
+    const { userId } = req.body;
+    if (!(supabaseAdmin || supabase) || !userId) return res.status(400).json({ error: '잘못된 요청' });
+    try {
+      const client = supabaseAdmin || supabase;
+      const { data: existing, error: getErr } = await client
+        .from('users')
+        .select('credits')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (getErr) console.warn('signup lookup error', getErr.message || getErr);
+
+      let newCredits = 6; // 신규 가입자 총 6회 (비회원 1회 포함 + 가입 시 추가 5회)
+      if (existing && typeof existing.credits === 'number') {
+        newCredits = existing.credits + 5;
+      }
+
+      const { error: upsertErr } = await client
+        .from('users')
+        .upsert({ id: userId, credits: newCredits, is_pro: false }, { onConflict: 'id' });
+      if (upsertErr) console.warn('signup upsert error', upsertErr.message || upsertErr);
+      res.json({ credits: newCredits });
+    } catch (e) {
+      res.status(500).json({ error: '서버 오류' });
+    }
+  });
+
+  // ─── 충전/관리용 엔드포인트: 크레딧 추가 (단건 구매, 운영 보정 등에서 호출)
+  app.post('/api/add_credits', async (req, res) => {
+    const { userId, amount } = req.body;
+    if (!(supabaseAdmin || supabase) || !userId || typeof amount !== 'number') return res.status(400).json({ error: '잘못된 요청' });
+    try {
+      const client = supabaseAdmin || supabase;
+      const { data: existing } = await client
+        .from('users')
+        .select('credits')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const current = existing && typeof existing.credits === 'number' ? existing.credits : 0;
+      const newCredits = current + amount;
+      const { error: upsertErr } = await client
+        .from('users')
+        .upsert({ id: userId, credits: newCredits }, { onConflict: 'id' });
+      if (upsertErr) console.warn('add credits upsert error', upsertErr.message || upsertErr);
+      res.json({ credits: newCredits });
+    } catch (e) {
+      res.status(500).json({ error: '서버 오류' });
     }
   });
 

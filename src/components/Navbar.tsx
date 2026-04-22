@@ -11,11 +11,11 @@ import { translations } from '../translations';
 interface NavbarProps {
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
-  tokens: number;
+  credits: number;
   user?: UserType;
 }
 
-export function Navbar({ currentPage, setCurrentPage, tokens, user }: NavbarProps) {
+export function Navbar({ currentPage, setCurrentPage, credits, user }: NavbarProps) {
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const t = translations[language].nav;
@@ -82,7 +82,7 @@ export function Navbar({ currentPage, setCurrentPage, tokens, user }: NavbarProp
 
           <div className="flex items-center gap-2 bg-surface-muted px-4 py-1.5 rounded-full border border-border shrink-0">
             <span className="material-symbols-outlined text-primary text-[16px] fill-1">generating_tokens</span>
-            <span className="font-headline font-bold text-sm tracking-tight">{tokens.toLocaleString()}</span>
+            <span className="font-headline font-bold text-sm tracking-tight">{credits.toLocaleString()}</span>
           </div>
 
           <div 

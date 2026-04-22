@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { motion } from 'motion/react';
 import { ArrowLeft, UserPlus, Key, Mail } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -14,6 +15,11 @@ interface AuthPageProps {
 export function AuthPages({ type, onNavigate }: AuthPageProps) {
   const { language } = useLanguage();
   const t = translations[language].auth;
+
+  const [name, setName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   if (type === 'signup') {
     return (
@@ -36,12 +42,49 @@ export function AuthPages({ type, onNavigate }: AuthPageProps) {
 
           <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
             <div className="space-y-4">
-              <AuthInput label={t.nameLabel} placeholder="John Doe" icon={<UserPlus className="w-4 h-4" />} />
-              <AuthInput label={t.emailLabel} placeholder="email@example.com" icon={<Mail className="w-4 h-4" />} />
-              <AuthInput label={t.pwLabel} placeholder="••••••••" type="password" icon={<Key className="w-4 h-4" />} />
+              <AuthInput label={t.nameLabel} placeholder="John Doe" icon={<UserPlus className="w-4 h-4" />} value={name} onChange={(v:any)=>setName(v)} />
+              <AuthInput label={t.emailLabel} placeholder="email@example.com" icon={<Mail className="w-4 h-4" />} value={email} onChange={(v:any)=>setEmail(v)} />
+              <AuthInput label={t.pwLabel} placeholder="••••••••" type="password" icon={<Key className="w-4 h-4" />} value={password} onChange={(v:any)=>setPassword(v)} />
             </div>
 
-            <button className="w-full bg-primary text-white p-5 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+            <button
+              onClick={async () => {
+                setIsSubmitting(true);
+                try {
+                  // Supabase Auth sign up
+                  const { data, error } = await supabase.auth.signUp({ email, password });
+                  if (error) {
+                    console.error('Supabase signup error', error);
+                    alert(language === 'ko' ? `회원가입 오류: ${error.message}` : `Signup error: ${error.message}`);
+                    return;
+                  }
+
+                  // data.user may be undefined if email confirmation required; try to get id from data.user
+                  const userId = (data && (data as any).user && (data as any).user.id) || null;
+
+                  if (userId) {
+                    // notify backend to grant signup credits
+                    await fetch('/api/signup_complete', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId }),
+                    });
+                    localStorage.setItem('vision_user_id', userId);
+                  } else {
+                    // If userId not immediately available (e.g. confirmation step), store email to finish later
+                    localStorage.setItem('vision_pending_email', email);
+                  }
+
+                  alert(language === 'ko' ? '가입이 완료되었습니다. 로그인 해주세요.' : 'Sign up complete. Please log in.');
+                  onNavigate('login');
+                } catch (e) {
+                  console.error('Signup flow error', e);
+                  alert(language === 'ko' ? '회원가입 중 오류가 발생했습니다.' : 'Signup failed.');
+                } finally { setIsSubmitting(false); }
+              }}
+              className="w-full bg-primary text-white p-5 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+              disabled={isSubmitting}
+            >
               {t.signUpSubmit}
             </button>
           </form>
@@ -109,6 +152,8 @@ function AuthInput({ label, placeholder, type = "text", icon }: any) {
           type={type}
           placeholder={placeholder}
           className="w-full bg-white/[0.03] border border-white/5 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-primary focus:bg-white/[0.05] transition-all outline-none"
+          value={value ?? ''}
+          onChange={(e) => onChange && onChange(e.target.value)}
         />
       </div>
     </div>

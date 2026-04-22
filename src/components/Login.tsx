@@ -3,19 +3,23 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabaseClient';
 import { Page } from '../types';
 import { translations } from '../translations';
 
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (email: string, password: string) => Promise<void>;
   onNavigate: (page: Page) => void;
 }
 
 export function Login({ onLogin, onNavigate }: LoginProps) {
   const { language, setLanguage } = useLanguage();
   const t = translations[language].auth;
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   return (
     <div className="h-screen flex items-center justify-center p-4 md:p-12 overflow-hidden bg-surface">
       <div className="w-full max-w-6xl h-full max-h-[800px] grid lg:grid-cols-12 bg-surface-muted rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative">
@@ -87,7 +91,7 @@ export function Login({ onLogin, onNavigate }: LoginProps) {
               </p>
             </motion.div>
 
-            <form className="space-y-10" onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
+            <form className="space-y-10" onSubmit={async (e) => { e.preventDefault(); setIsSubmitting(true); await onLogin(email, password); setIsSubmitting(false); }}>
               <div className="space-y-8">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">
@@ -96,6 +100,8 @@ export function Login({ onLogin, onNavigate }: LoginProps) {
                   <input 
                     type="email" 
                     placeholder="architect@vision.studio"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-transparent border-0 border-b border-white/10 focus:border-primary focus:ring-0 transition-all py-3 px-0 text-lg placeholder:text-white/5"
                   />
                 </div>
@@ -106,6 +112,8 @@ export function Login({ onLogin, onNavigate }: LoginProps) {
                   <input 
                     type="password" 
                     placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-transparent border-0 border-b border-white/10 focus:border-primary focus:ring-0 transition-all py-3 px-0 text-lg placeholder:text-white/5"
                   />
                 </div>
@@ -115,6 +123,7 @@ export function Login({ onLogin, onNavigate }: LoginProps) {
                 <button 
                   type="submit"
                   className="w-full bg-white text-primary p-6 rounded-sm font-bold uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all hover:bg-white/90 active:scale-95"
+                  disabled={isSubmitting}
                 >
                   {language === 'ko' ? '워크스페이스 입장' : language === 'jp' ? 'ワークスペースに入る' : 'Workplace Entrance'}
                   <ArrowUpRight className="w-4 h-4" />

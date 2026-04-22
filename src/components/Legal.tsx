@@ -59,8 +59,8 @@ export function Legal({ onBack }: { onBack: () => void }) {
             p: "Google Play를 통한 구매는 Google Play 환불 정책을 따릅니다. 구매 후 48시간 이내에는 Google Play 고객센터를 통해 환불을 요청할 수 있습니다."
           },
           {
-            h: "2. 토큰 환불 기준",
-            p: "구매 후 7일 이내, 토큰을 전혀 사용하지 않은 경우 전액 환불이 가능합니다. 1토큰이라도 사용하여 AI 분석을 실행한 경우, 디지털 콘텐츠 즉시 인도의 특성상 환불이 불가합니다."
+            h: "2. 분석권 환불 기준",
+            p: "구매 후 7일 이내, 분석권을 전혀 사용하지 않은 경우 전액 환불이 가능합니다. 1회라도 분석을 실행한 경우, 디지털 콘텐츠 즉시 인도의 특성상 환불이 불가합니다."
           },
           {
             h: "3. 프로 구독 해지",
@@ -68,7 +68,7 @@ export function Legal({ onBack }: { onBack: () => void }) {
           },
           {
             h: "4. 기술적 오류 환불",
-            p: "서비스 오류로 인해 토큰이 차감되었으나 AI 분석이 정상 완료되지 않은 경우, 차감된 토큰을 복구해 드립니다. 문의: j730415@gmail.com"
+            p: "서비스 오류로 인해 분석권이 차감되었으나 AI 분석이 정상 완료되지 않은 경우, 차감된 분석권을 복구해 드립니다. 문의: j730415@gmail.com"
           }
         ]
       }
@@ -124,8 +124,8 @@ export function Legal({ onBack }: { onBack: () => void }) {
             p: "Purchases made via Google Play are subject to Google Play's refund policy. Refunds may be requested within 48 hours of purchase through the Google Play Help Center."
           },
           {
-            h: "2. Token Refund Policy",
-            p: "Full refunds are available within 7 days of purchase if no tokens have been consumed. Once any token is used to run an AI analysis, the purchase is non-refundable due to immediate digital delivery."
+            h: "2. Credit Refund Policy",
+            p: "Full refunds are available within 7 days of purchase if no credits have been consumed. Once any credit is used to run an AI analysis, the purchase is non-refundable due to immediate digital delivery."
           },
           {
             h: "3. Pro Subscription Cancellation",
@@ -133,7 +133,7 @@ export function Legal({ onBack }: { onBack: () => void }) {
           },
           {
             h: "4. Technical Error Refunds",
-            p: "If tokens were deducted but AI analysis did not complete due to a service error, the tokens will be restored. Contact: j730415@gmail.com"
+            p: "If credits were deducted but AI analysis did not complete due to a service error, the credits will be restored. Contact: j730415@gmail.com"
           }
         ]
       }
