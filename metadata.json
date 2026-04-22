@@ -1,0 +1,6 @@
+{
+  "name": "VisionInterior",
+  "description": "AI-powered premium interior design and architectural visualization studio.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["AI Spatial Analysis", "Premium Rendering", "Token Boutique"]
+}
