@@ -117,7 +117,12 @@ export default function App() {
             className="h-full overflow-hidden"
           >
             {currentPage === 'studio' && (
-              <Studio onGenerate={handleGenerate} tokens={user?.tokens || 0} />
+              <Studio
+                onGenerate={handleGenerate}
+                tokens={user?.tokens || 0}
+                isPro={user?.isPro ?? false}
+                userId={user?.id ?? ''}
+              />
             )}
             {currentPage === 'results' && latestResult && (
               <Results result={latestResult} />

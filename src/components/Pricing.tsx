@@ -6,10 +6,6 @@ import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../translations';
-import { loadStripe } from '@stripe/stripe-js';
-
-// Get public key from Vite env
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_placeholder');
 
 interface PricingProps {
   onUpgrade: (plan: 'pro') => void;
@@ -29,70 +25,30 @@ export function Pricing({ onUpgrade, onBuyTokens, onNavigate }: PricingProps) {
     type: 'pro' | 'tokens';
     value: any;
     itemName: string;
-    planId: string;
     price: string;
   } | null>(null);
   
-  const handlePurchase = (type: 'pro' | 'tokens', value: any, itemName: string, planId: string, price: string) => {
-    setPendingPurchase({ type, value, itemName, planId, price });
+  const handlePurchase = (type: 'pro' | 'tokens', value: any, itemName: string, _planId: string, price: string) => {
+    setPendingPurchase({ type, value, itemName, price });
   };
 
-  const executePurchase = async () => {
+  const executePurchase = () => {
     if (!pendingPurchase) return;
-    
-    const { type, value, itemName, planId } = pendingPurchase;
+
+    const { type, value, itemName } = pendingPurchase;
     setPendingPurchase(null);
     setIsProcessing(true);
-    setError(null);
     setPurchaseItem(itemName);
-    
-    try {
-      // Create a Checkout Session on the server
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          planId,
-          successUrl: window.location.origin + '?payment=success',
-          cancelUrl: window.location.origin + '?payment=cancel',
-        }),
-      });
 
-      const session = await response.json();
-      
-      if (session.error) {
-        throw new Error(session.error);
-      }
-
-      // When the customer clicks on the button, redirect them to Checkout.
-      const stripe = await stripePromise;
-      const { error: stripeError } = await (stripe as any).redirectToCheckout({
-        sessionId: session.id,
-      });
-
-      if (stripeError) {
-        throw new Error(stripeError.message);
-      }
-    } catch (err: any) {
-      console.error("Payment error:", err);
-      // For demo purposes, we will fallback to mock success if no key is provided
-      if (err.message.includes("Stripe is not configured") || err.message.includes("placeholder")) {
-        // Fallback to simulation if Stripe is not setup (to keep the app usable for demo)
-        setTimeout(() => {
-          setIsProcessing(false);
-          setShowSuccess(true);
-          confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-          if (type === 'pro') onUpgrade('pro');
-          else onBuyTokens(value);
-          setTimeout(() => setShowSuccess(false), 3000);
-        }, 1500);
-      } else {
-        setError(err.message || "An error occurred during payment.");
-        setIsProcessing(false);
-      }
-    }
+    // Google Play 인앱결제 연동 전 시뮬레이션 (출시 시 교체)
+    setTimeout(() => {
+      setIsProcessing(false);
+      setShowSuccess(true);
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      if (type === 'pro') onUpgrade('pro');
+      else onBuyTokens(value);
+      setTimeout(() => setShowSuccess(false), 3000);
+    }, 1200);
   };
 
   return (

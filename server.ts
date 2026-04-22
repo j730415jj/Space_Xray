@@ -2,7 +2,6 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import Stripe from "stripe";
 import { GoogleGenAI } from "@google/genai";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
@@ -14,10 +13,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ─── 클라이언트 초기화 ───────────────────────────────────────────────────────
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY)
-  : null;
-
 const gemini = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
@@ -195,50 +190,6 @@ async function startServer() {
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "알 수 없는 오류";
-      res.status(500).json({ error: message });
-    }
-  });
-
-  // ─── Stripe 결제 세션 생성 ──────────────────────────────────────────────────
-  app.post("/api/create-checkout-session", async (req, res) => {
-    if (!stripe) {
-      return res.status(500).json({ error: "Stripe가 설정되지 않았습니다." });
-    }
-
-    const { planId, successUrl, cancelUrl } = req.body;
-
-    const prices: Record<string, { amount: number; name: string }> = {
-      "pro":          { amount: 14900, name: "프로 구독 (₩14,900/월)" },
-      "token-basic":  { amount: 4900,  name: "베이직 팩 100토큰" },
-      "token-smart":  { amount: 19000, name: "스마트 팩 500토큰" },
-      "token-pro":    { amount: 49000, name: "프로 팩 1,500토큰" },
-    };
-
-    const plan = prices[planId];
-    if (!plan) {
-      return res.status(400).json({ error: "유효하지 않은 상품 ID입니다." });
-    }
-
-    try {
-      const session = await (stripe.checkout.sessions as any).create({
-        automatic_payment_methods: { enabled: true },
-        line_items: [
-          {
-            price_data: {
-              currency: "krw",
-              product_data: { name: plan.name },
-              unit_amount: plan.amount,
-            },
-            quantity: 1,
-          },
-        ],
-        mode: "payment",
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-      });
-      res.json({ id: session.id });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "결제 오류";
       res.status(500).json({ error: message });
     }
   });

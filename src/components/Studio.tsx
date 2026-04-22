@@ -13,9 +13,11 @@ import { DesignResult } from '../types';
 interface StudioProps {
   onGenerate: (result: DesignResult) => void;
   tokens: number;
+  isPro: boolean;
+  userId: string;
 }
 
-export function Studio({ onGenerate, tokens }: StudioProps) {
+export function Studio({ onGenerate, tokens, isPro, userId }: StudioProps) {
   const { language } = useLanguage();
   const t = translations[language].studio;
   const [selectedStyle, setSelectedStyle] = useState<DesignStyle>(STYLES[0]);
@@ -114,6 +116,8 @@ export function Studio({ onGenerate, tokens }: StudioProps) {
           styleName: selectedStyle.name,
           params,
           customColors: customColors.length > 0 ? customColors : [],
+          isPro,
+          userId,
         }),
       });
       const data = await res.json();
@@ -372,7 +376,9 @@ export function Studio({ onGenerate, tokens }: StudioProps) {
                   {isGenerating ? (
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      {language === 'ko' ? 'Gemini AI 분석 중...' : 'Analyzing with Gemini AI...'}
+                      {isPro
+                        ? (language === 'ko' ? 'Claude AI 분석 중...' : 'Analyzing with Claude AI...')
+                        : (language === 'ko' ? 'Gemini AI 분석 중...' : 'Analyzing with Gemini AI...')}
                     </div>
                   ) : (
                     <>
