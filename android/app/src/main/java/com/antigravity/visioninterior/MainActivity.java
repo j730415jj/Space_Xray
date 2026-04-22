@@ -1,4 +1,4 @@
-package com.antigravity.spacexray;
+package com.antigravity.visioninterior;
 
 import com.getcapacitor.BridgeActivity;
 

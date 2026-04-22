@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SPACE X-RAY</string>
-    <string name="title_activity_main">SPACE X-RAY</string>
-    <string name="package_name">com.antigravity.spacexray</string>
-    <string name="custom_url_scheme">com.antigravity.spacexray</string>
+    <string name="app_name">SPACE X-RAY: AI 인테리어 디자인</string>
+    <string name="title_activity_main">SPACE X-RAY: AI 인테리어 디자인</string>
+    <string name="package_name">com.antigravity.visioninterior</string>
+    <string name="custom_url_scheme">com.antigravity.visioninterior</string>
 </resources>
