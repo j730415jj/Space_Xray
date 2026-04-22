@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Capacitor 빌드 산출물 (소스는 포함)
+android/.gradle/
+android/app/build/
+android/build/
+android/.idea/
+*.apk
+*.aab
